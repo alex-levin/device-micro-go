@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: device-micro-go
+  name: device-micro-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: device-micro-go
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: device-micro-go
+    spec:
+      containers:
+      - image: localhost:5000/device-micro-go
+        name: device-micro-go
+        resources: {}
+status: {}

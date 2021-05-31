@@ -1,0 +1,170 @@
+c:\code\device-microservices-go>go mod init example.com/device-micro-go
+
+c:\code\device-microservices-go>go run .
+http://localhost:8080/devices
+
+C:\code\device-microservices-go>go build -o main.exe .
+
+
+
+Go server listens on port 8080:
+http.ListenAndServe((":8080"), nil)
+
+-t - Name and optionally a tag in the 'name:tag' format
+docker build -t alex-levin/device-micro-go:1.0 .
+
+C:\code\device-microservices-go>docker images
+REPOSITORY                           TAG        IMAGE ID       CREATED         SIZE
+alex-levin/device-micro-go           1.0        df56e9e9ec8b   9 seconds ago   308MB
+
+docker run -p 8080:8080 -it alex-levin/device-micro-go:1.0
+
+http://localhost:8080/devices
+
+[{"id":1,"esn":"A0000001","status":"Online","address":"127.0.1.1","name":"Charles Darnay"},
+{"id":2,"esn":"A0000003","status":"Online","address":"127.0.1.2","name":"Sydney Carton"},
+{"id":3,"esn":"A0000003","status":"Offline","address":"127.0.1.3","name":"Lucie Manette"},
+{"id":4,"esn":"A0000004","status":"Online","address":"127.0.1.4","name":"Miss Pross"},
+{"id":5,"esn":"A0000005","status":"Online","address":"127.0.1.5","name":"Jarvis Lorry"}]
+
+
+https://spring.io/guides/gs/spring-boot-kubernetes/
+kubectl create deployment device-micro-go --image=alex-levin/device-micro-go:1.0 --dry-run=client -o=yaml > deployment.yaml
+
+
+https://kubernetes.io/docs/concepts/services-networking/service/
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+Kubernetes services are used to expose our pods outside of the cluster. 
+clusterip is the service type
+Left 8080 - service port
+Right 8080 - targeting backend port
+kubectl create service clusterip device-micro-go --tcp=8080:8080 --dry-run=client -o=yaml >> deployment.yaml
+
+Create the registry container:
+https://docs.docker.com/registry
+c:\code\device-microservices-go>docker run -d -p 5000:5000 --restart=always --name local-registry registry:2
+Unable to find image 'registry:2' locally
+2: Pulling from library/registry
+ddad3d7c1e96: Pull complete
+6eda6749503f: Pull complete
+363ab70c2143: Pull complete
+5b94580856e6: Pull complete
+12008541203a: Pull complete
+Digest: sha256:bac2d7050dc4826516650267fe7dc6627e9e11ad653daca0641437abdf18df27
+Status: Downloaded newer image for registry:2
+5f19ded6bca60731e517f47d6686bbc98eeba0e1391b7647c8794ce5ec50bbab
+
+c:\code\device-microservices-go>docker ps -a
+CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS                     PORTS                    NAMES
+7f7365232516   registry:2                       "/entrypoint.sh /etc…"   21 seconds ago   Up 20 seconds              0.0.0.0:5000->5000/tcp   local-registry
+108602dcbe46   alex-levin/device-micro-go:1.0   "/app/main"              9 minutes ago    Exited (2) 9 minutes ago                            happy_taussig
+
+Tag the image for a private repository:
+source image: alex-levin/device-micro-go:1.0
+target image: localhost:5000/device-micro-go
+c:\code\device-microservices-go>docker image tag alex-levin/device-micro-go:1.0 localhost:5000/device-micro-go
+
+
+Push the image to the local registry:
+c:\code\device-microservices-go>docker push localhost:5000/device-micro-go
+Using default tag: latest
+The push refers to repository [localhost:5000/device-micro-go]
+a9e58c6c4401: Pushed
+5f70bf18a086: Pushed
+7a1dad217c7d: Pushed
+b1914ad3ba9c: Pushed
+a9d40f605488: Pushed
+dc27f0c2b863: Pushed
+a588deb4bef3: Pushed
+224f6b2e3ad2: Pushed
+b2d5eeeaba3a: Pushed
+latest: digest: sha256:fcbdb31ec803247dc66decd31abbf10299ac148c4e018e12dd4c489e4ac27876 size: 2197
+
+
+Check if the tag is in local rgistry:
+https://stackoverflow.com/questions/42564058/how-to-use-local-docker-images-with-minikube
+c:\code\device-microservices-go>curl -X GET localhost:5000/v2/device-micro-go/tags/list
+{"name":"device-micro-go","tags":["latest"]}
+
+
+Check if we can pull it:
+c:\code\device-microservices-go>docker pull localhost:5000/device-micro-go
+Using default tag: latest
+latest: Pulling from device-micro-go
+Digest: sha256:fcbdb31ec803247dc66decd31abbf10299ac148c4e018e12dd4c489e4ac27876
+Status: Image is up to date for localhost:5000/device-micro-go:latest
+localhost:5000/device-micro-go:latest
+
+
+Modify deployment.yaml pointing image to the local registry:
+old:
+- image: alex-levin/device-micro-go:1.0
+new:
+- image: localhost:5000/device-micro-go
+
+
+Deploy to kubernetes:
+c:\code\device-microservices-go>kubectl apply -f deployment.yaml
+deployment.apps/device-micro-go created
+service/device-micro-go created
+
+
+c:\code\device-microservices-go>kubectl get all
+NAME                                   READY   STATUS    RESTARTS   AGE
+pod/device-micro-go-6f9d5ccb77-pqvkn   1/1     Running   0          2m1s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   149m
+
+NAME                              READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/device-micro-go   1/1     1            1           2m1s
+
+NAME                                         DESIRED   CURRENT   READY   AGE
+replicaset.apps/device-micro-go-6f9d5ccb77   1         1         1       2m1s
+
+c:\code\device-microservices-go>
+
+
+Accessing the Service
+https://kubernetes.io/docs/tutorials/kubernetes-basics/expose/expose-intro/
+Although each Pod has a unique IP address, those IPs are not exposed outside the cluster without a Service.
+Services allow your applications to receive traffic.
+Services can be exposed in different ways by specifying a type in the ServiceSpec:
+ -- ClusterIP (default) - Exposes the Service on an internal IP in the cluster. This type makes the Service only reachable from within the cluster.
+    Postgres service would be a good candidate for this type.
+ -- NodePort - Exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a Service accessible from outside the cluster using <NodeIP>:<NodePort>. Superset of ClusterIP.
+ -- LoadBalancer - Creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service. Superset of NodePort.
+To access the node from outside of the cluster, we need to use the NodePort or LoadBalancer type.
+
+c:\code\device-microservices-go>kubectl expose deployment device-micro-go --port=8080 --type=NodePort
+
+c:\code\device-microservices-go>kubectl get services
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+device-micro-go   NodePort    10.107.41.155   <none>        8080:31313/TCP   29s
+kubernetes        ClusterIP   10.96.0.1       <none>        443/TCP          152m
+
+
+c:\code\device-microservices-go>kubectl describe svc device-micro-go
+Name:                     device-micro-go
+Namespace:                default
+Labels:                   app=device-micro-go
+Annotations:              <none>
+Selector:                 app=device-micro-go
+Type:                     NodePort
+IP:                       10.107.41.155
+LoadBalancer Ingress:     localhost
+Port:                     <unset>  8080/TCP
+TargetPort:               8080/TCP
+NodePort:                 <unset>  31313/TCP
+Endpoints:                10.1.0.104:8080
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+The device-micro-go service is available within the cluster under 10.107.41.155:8080.
+It’s also available from the host, at the IP address where LoadBalancer Ingress runs (localhost) and and on port 31313
+
+localhost:31313/devices
+
+[{"id":1,"esn":"A0000001","status":"Online","address":"127.0.1.1","name":"Charles Darnay"},{"id":2,"esn":"A0000003","status":"Online","address":"127.0.1.2","name":"Sydney Carton"},{"id":3,"esn":"A0000003","status":"Offline","address":"127.0.1.3","name":"Lucie Manette"},{"id":4,"esn":"A0000004","status":"Online","address":"127.0.1.4","name":"Miss Pross"},{"id":5,"esn":"A0000005","status":"Online","address":"127.0.1.5","name":"Jarvis Lorry"}]
+
