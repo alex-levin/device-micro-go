@@ -21,6 +21,7 @@ type Device struct {
 var deviceList []Device
 
 // https://www.digitalocean.com/community/tutorials/understanding-init-in-go
+// In Go, the predefined init() function sets off a piece of code to run before any other part of your package
 func init() {
 	devicesJSON := `[
 		{
