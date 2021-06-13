@@ -22,3 +22,24 @@ spec:
         name: device-micro-go
         resources: {}
 status: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: device-micro-go
+  name: device-micro-go
+spec:
+  ports:
+  - name: 8080-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: device-micro-go
+  type: NodePort
+status:
+  loadBalancer: {}
