@@ -1,0 +1,65 @@
+kubectl create secret generic postgres-secrets --from-literal=POSTGRES_USER="admin" --from-literal=POSTGRES_PASSWORD="Proxypass14..."
+
+C:\Users\alxle>kubectl describe secret postgres-secrets
+Name:         postgres-secrets
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+POSTGRES_PASSWORD:  14 bytes
+POSTGRES_USER:      5 bytes
+
+
+C:\code\device-micro-go\postgres>kubectl apply -f configmap.yaml
+configmap/postgres-configmap created
+
+C:\code\device-micro-go\postgres>kubectl apply -f storage.yaml   
+persistentvolume/postgres-pv created
+persistentvolumeclaim/postgres-pv-claim created
+
+C:\code\device-micro-go\postgres>kubectl apply -f deployment.yaml 
+deployment.apps/postgres created
+service/postgres created
+
+C:\code\device-micro-go\postgres>kubectl get services
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+device-micro-go   NodePort    10.106.84.219   <none>        8080:31250/TCP   7d10h
+kubernetes        ClusterIP   10.96.0.1       <none>        443/TCP          21d
+postgres          NodePort    10.105.97.249   <none>        5432:30112/TCP   15s
+
+Open pgadmin. Right click on Servers - Create - Servers
+For Name, enter postgres-kubernetes
+For Connection Host: localhost
+Port: 30112
+Maintenance database: device-db
+Username: admin
+Password: Proxypass14...
+
+
+C:\code\device-micro-go\postgres>docker ps
+CONTAINER ID   IMAGE                            COMMAND                  CREATED         STATUS         PORTS                    NAMES
+3ffb10fee6b7   a58cf5527d36                     "docker-entrypoint.s…"   6 minutes ago   Up 6 minutes                            k8s_postgres_postgres-549d8c69bf-8bw67_default_e2e64d42-8ddc-4383-bed9-da15b153b29b_0
+209687a84671   registry:2                       "/entrypoint.sh /etc…"   3 hours ago     Up 3 hours     0.0.0.0:5000->5000/tcp   local-registry
+347377c2925f   localhost:5000/device-micro-go   "/app/main"              7 hours ago     Up 7 hours                              k8s_device-micro-go_device-micro-go-6f9d5ccb77-rdgvp_default_5d993d05-df63-418f-ad1b-212787ad89ac_1
+
+C:\code\device-micro-go\postgres>kubectl get pods
+NAME                               READY   STATUS    RESTARTS   AGE
+device-micro-go-6f9d5ccb77-rdgvp   1/1     Running   1          7d10h
+postgres-549d8c69bf-8bw67          1/1     Running   0          7m15s
+
+Let's remove the postgres pod:
+C:\code\device-micro-go\postgres>kubectl delete pod postgres-549d8c69bf-8bw67    
+pod "postgres-549d8c69bf-8bw67" deleted
+
+A new one is create automatically:
+C:\code\device-micro-go\postgres>kubectl get pods
+NAME                               READY   STATUS    RESTARTS   AGE
+device-micro-go-6f9d5ccb77-rdgvp   1/1     Running   1          7d10h
+postgres-549d8c69bf-75bwd          1/1     Running   0          34s
+
+
+

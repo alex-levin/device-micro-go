@@ -5,8 +5,6 @@ http://localhost:8080/devices
 
 C:\code\device-microservices-go>go build -o main.exe .
 
-
-
 Go server listens on port 8080:
 http.ListenAndServe((":8080"), nil)
 
